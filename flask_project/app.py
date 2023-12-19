@@ -1,15 +1,33 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session
 from random import randint
 from smtplib import SMTP
+from flask_mysqldb import MySQL
 app = Flask(__name__)
+app.secret_key = 'wertyui'
+
+#----------MySQL Config------------
+app.config['MYSQL_USER'] = 'dev'
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_PASSWORD'] = '123'
+app.config['MYSQL_DB'] = 'pes_students'
+
+mysql = MySQL(app)
+
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    if session.get('email'):
+        return render_template('index.html')
+    else:
+        return render_template('login.html')
+
 
 @app.route('/contact')
 def contact():
-    return render_template('contact.html')
+    if session.get('email'):
+        return render_template('contact.html')
+    else:
+        return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -43,20 +61,55 @@ def register():
             # render OTP page
             return render_template('otp.html')
         else:
-            return "BOTH passwords are not matched"
+            return render_template('otp.html', message="Both OTPs didn't match")
 
 
 @app.route('/otp', methods=['POST', 'GET'])
 def otp():
     if request.method == 'POST':
-        if c_otp == request.form.get('u_otp'):
-            pass
+        if str(c_otp) == request.form.get('u_otp'):
             # create a row in our database
+            cur = mysql.connection.cursor()
+            sql_query = f"insert into students values ({c_otp},'{user_data['full_name']}', '{user_data['email']}', '{user_data['password']}');"
+            cur.execute(sql_query) # SQL query
+            cur.connection.commit()
+            cur.close()
+            return render_template('register.html', message='successfully created!!!')
         else:
-            return render_template('otp.html', data={'message':'invalid OTP'})
+
+            return render_template('otp.html', message='Invalid OTP')
+        
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return render_template('login.html')
+    else:
+        u_email = request.form.get('email')
+        u_password = request.form.get('password')
+
+        query = f"select full_name, email, password from students where email = '{u_email}'"
+        cur = mysql.connection.cursor()
+        cur.execute(query)
+        one_record = cur.fetchone()
+        if one_record:
+            # yes that email EXISTS
+            if one_record[2] == u_password:
+                #start a session
+                session['email'] = u_email
+                return render_template('index.html')
+
+                
+            else:
+                return render_template('login.html', message='incorrect password!!')
+        else:
+            # it does not exist
+            return render_template('login.html', message='Invalid Email ID')
 
 
-
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    del session['email']
+    return render_template('login.html')
 
 
         
