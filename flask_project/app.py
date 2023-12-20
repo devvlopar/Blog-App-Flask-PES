@@ -112,8 +112,17 @@ def logout():
     return render_template('login.html')
 
 
+@app.route('/add_blog', methods=['GET', 'POST'])
+def add_blog():
+    if request.method == 'GET':
+        return render_template('add_blog.html')
+    else:
+        #upload a blog
+        return render_template('add_blog.html', message='Blog has been successfully added!!')
+
+
         
 
 
 if __name__ == '__main__':
-    app.run(debug=1)
+    app.run(debug=True)
