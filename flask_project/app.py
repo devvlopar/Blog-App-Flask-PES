@@ -1,9 +1,16 @@
-from flask import Flask, render_template, request, session
+from flask import Flask, render_template, request, session, redirect, url_for
 from random import randint
 from smtplib import SMTP
 from flask_mysqldb import MySQL
+import os
+from datetime import datetime
+
 app = Flask(__name__)
 app.secret_key = 'wertyui'
+
+#----------File Upload Config-------
+app.config['UPLOAD_FOLDER'] = 'static/blog_photos/'
+
 
 #----------MySQL Config------------
 app.config['MYSQL_USER'] = 'dev'
@@ -17,7 +24,22 @@ mysql = MySQL(app)
 @app.route('/')
 def index():
     if session.get('email'):
-        return render_template('index.html')
+        # retrive all blogs from db
+        cur = mysql.connection.cursor()
+        sql_query = "SELECT blogs.blog_title, blogs.blog_des, blogs.blog_image, students.full_name, blogs.datetime FROM blogs INNER JOIN students ON blogs.blog_owner=students.id;"
+        cur.execute(sql_query)
+        data_from_db = cur.fetchall()
+        print(data_from_db)
+        cur.close()
+
+        # fetch session user info
+        cur = mysql.connection.cursor()
+        sql_query = f"SELECT full_name from students where email = '{session['email']}';"
+        cur.execute(sql_query)
+        session_user_full_name = cur.fetchone()
+        cur.close()
+
+        return render_template('index.html', all_blogs = data_from_db, session_user_name = session_user_full_name)
     else:
         return render_template('login.html')
 
@@ -96,7 +118,8 @@ def login():
             if one_record[2] == u_password:
                 #start a session
                 session['email'] = u_email
-                return render_template('index.html')
+
+                return redirect(url_for('index'))
 
                 
             else:
@@ -118,10 +141,49 @@ def add_blog():
         return render_template('add_blog.html')
     else:
         #upload a blog
+        # CREATE TABLE blogs (blog_id int NOT NULL AUTO_INCREMENT, blog_title varchar(255), blog_des text(65535), blog_image varchar(255), blog_owner int, PRIMARY KEY(blog_id), FOREIGN KEY(blog_owner) REFERENCES students(id) );
+        b_title = request.form.get('title')
+        b_des = request.form.get('des')
+        b_file_obj = request.files['blog_pic']
+        b_filename = b_file_obj.filename
+        #below line will save image file in the folder
+        b_file_obj.save(os.path.join(app.config['UPLOAD_FOLDER'], b_filename))
+
+        cur = mysql.connection.cursor()
+        #fetch current time
+        current_dt = str(datetime.now())
+
+        #fetch current user ID(session user)
+        session_user_email = session['email']
+        cur.execute(f"select id from students where email = '{session_user_email}'")
+        session_user_li = cur.fetchone()
+        session_user_id = session_user_li[0]
+
+        #saving info in the db/ creating a record in blogs
+        sql_query = f"insert into blogs (blog_title, blog_des, blog_image, blog_owner, datetime ) values ('{b_title}','{b_des}', '{b_filename}', {session_user_id}, '{current_dt}');"
+        cur.execute(sql_query) # SQL query
+        cur.connection.commit()
+        cur.close()
+
+
+
         return render_template('add_blog.html', message='Blog has been successfully added!!')
 
 
         
+@app.route('/my_blogs')
+def my_blogs():
+    # exctract only session user's blogs
+    session_user_email = session['email']
+    cur = mysql.connection.cursor()
+    sql_query = f"SELECT blogs.blog_title, blogs.blog_des, blogs.blog_image, students.full_name, blogs.datetime FROM blogs INNER JOIN students ON blogs.blog_owner=students.id WHERE students.email = '{session_user_email}';"
+    cur.execute(sql_query)
+    my_blogs = cur.fetchall()
+    cur.close()
+    return render_template('my_blogs.html', all_my_blogs = my_blogs)
+
+#search bar query
+# select * from blogs where blog_title in request.form.get('search_bar_name')
 
 
 if __name__ == '__main__':

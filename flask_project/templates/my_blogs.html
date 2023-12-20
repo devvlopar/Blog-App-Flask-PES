@@ -56,19 +56,27 @@ Author URL: http://w3layouts.com
 					<li class="nav-item dropdown @@pages__active">
 						<a class="nav-link" href="/add_blog">Add Blog</a>
 					</li>
-                    <li class="nav-item @@contact__active">
-						<a class="nav-link" href="">{{ session_user_name[0] }}
-                        </a>
-					</li>
 					<li class="nav-item @@contact__active">
 						<a class="nav-link" href="/logout">
-                            <button class="btn-primary" >LogOut</button>
+                            <button>LogOut</button>
                         </a>
 					</li>
 				</ul>
 			</div>
 			<!-- toggle switch for light and dark theme -->
-			
+			<div class="mobile-position">
+				<nav class="navigation">
+					<div class="theme-switch-wrapper">
+						<label class="theme-switch" for="checkbox">
+							<input type="checkbox" id="checkbox">
+							<div class="mode-container">
+								<i class="gg-sun"></i>
+								<i class="gg-moon"></i>
+							</div>
+						</label>
+					</div>
+				</nav>
+			</div>
 			<!-- //toggle switch for light and dark theme -->
 		</div>
 	</nav>
@@ -124,7 +132,7 @@ Author URL: http://w3layouts.com
             <div class="col-lg-12">
                 <h3 class="section-title-left mb-4"> Editor's Pick </h3>
                 <div class="row">
-                    {% for blog in all_blogs %}
+                    {% for blog in all_my_blogs %}
                     
                     <div class="col-lg-3 col-md-3 item">
                         <div class="card">
